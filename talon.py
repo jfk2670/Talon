@@ -6,6 +6,7 @@ from optparse import OptionParser
 import codecs
 import zipfile
 import urllib2
+import collections
 
 def setup():
 	"""
@@ -85,25 +86,27 @@ def printHelp():
 	"""
 	Prints help menu
 	"""	
+	print "-" * 27
 	print "Command         Description"
 	print "-" * 27
-	#print "advanced........Prints advanced user info"			#toBeImplemented
-	print "exit............Exit"
-	print "help............Print help"
-	#print "html............Download timeline to html file"		#toBeImplemented
-	print "list............Compare timeline against wordlist"
-	print "live............Interactive search for specified query"
-	print "media...........Downloads and zips photos from timeline"
-	print "new.............Change target account"				
-	print "print...........Print currently loaded timeline"	
-	print "user............Prints basic user info"
+	print "exit" 	 + " " * 12 + "Exits the program"
+	print "help" 	 + " " * 12 + "Prints this help list"
+	print "clear"	 + " " * 11 + "Clears the terminal"
+	#print "html" 	 + " " * 12 + "Download timeline to an html file"		
+	print "live" 	 + " " * 12 + "Interactive live search for specific queries"
+	print "match" 	 + " " * 11 + "Compare timeline against a given wordlist"	
+	print "new" 	 + " " * 13 + "Change target account"				
+	#print "search" 	 + " " * 10 + "Search user's tweets interactively"	
+	print "user" 	 + " " * 12 + "Prints basic user info"
+	#print "advanced" + " " * 8  + "Prints advanced user info"			
+	print "zip" 	 + " " * 13 + "Download and zip timeline"
 
 def userInfo():
 	"""
 	Prints info on target account
 	"""
 	try:
-		print "[+] Name: "+str(timeline[0].user.name)
+		print "[+] Name: "+timeline[0].user.name
 		print "[+] Handle: "+str(timeline[0].user.screen_name)
 		print "[+] About: "+xstr(timeline[0].user.description)
 		print "[+] Location: "+xstr(timeline[0].user.location)
@@ -125,7 +128,25 @@ def changeUser():
 	except Exception, e:
 		print "[-] Unable to change user account"
 		print e
-	
+
+def dateSearch():
+	start_entry = raw_input('Enter start date (YYYY-MM-DD): ')
+	end_entry = raw_input('Enter end data (YYYY-MM-DD): ')
+
+	syear, smonth, sday = start_entry.split('-')
+	eyear, emonth, eday = end_entry.split('-')
+	start_date = syear + smonth + sday
+	end_date = eyear + emonth + eday
+
+	for status in timeline:
+		date = str(status.created_at)
+		current_date, time = date.split(' ');
+		year, month, day = current_date.split('-', 3)
+		check_date = year + month + day
+
+		if check_date > start_date and check_date < end_date:
+			printTweet(status)
+		
 def listSearch():
 	"""
 	Will check the currently gathered timeline and match it against the specified wordlist
@@ -139,24 +160,24 @@ def listSearch():
 			break
 		else:
 			print "[-] Error opening file"
-	
-	print "here"
+
 	try:
 		print "[+] Searching timeline for contents of %s..."%path
 		wfile = open(path, 'r')
-		print "opened file"
 		for status in timeline:
 			#wfile = open(wordlist, 'r')
-			print status.text.lower()
 			for word in wfile:
 				word = word.strip()
+				print word
 				if word.lower() in status.text.lower():
-					#print status.text.lower()
-					printTweet(status)
+					print status.text.lower()
+					#print "MATCH"
+					#printTweet(status)
 		wfile.close()
 		return
-	except:
+	except Exception, e:
 		print "[-] Error searching timeline"
+		print e
 		return
 	
 def liveSearch():
@@ -177,14 +198,6 @@ def liveSearch():
 	except Exception, e:
 		print "[-] Error with search query"
 		print e
-
-def xstr(s):
-	"""
-	Converts null string to 'N/A'
-	"""
-	if s is None:
-		return 'N/A'
-	return str(s)
 
 def getImages():
 	print "[+] Downloading images from @%s's timeline..."%str(timeline[0].user.screen_name)
@@ -213,6 +226,49 @@ def getImages():
 		print "[-] Error downloading pictures"
 		print e
 		return
+		
+def mentions():
+	"""
+	Prints most common words used in tweets
+	"""
+	mentions = []
+	print "[+] Gathering info on mentions..."
+	
+	try:
+		for tweet in timeline:
+			split = tweet.text.lower().split()
+			for word in split:
+				if word[0]=="@":
+					mentions.append(word)
+		counter = collections.Counter(mentions)
+		mentions = counter.most_common()
+		
+		print "\nUser                   Qty"
+		print "=========================="
+		for i in range(0,10):
+			print str(mentions[i][0])+"\t\t"+str(mentions[i][1])
+		return
+	except Exception, e:
+		print "[-] Error getting mentions"
+		print e
+	
+def xstr(s):
+	"""
+	Converts null string to 'N/A'
+	"""
+	if s is None:
+		return 'N/A'
+	try:
+		# UCS-4
+		highpoints = re.compile(u'[\U00010000-\U0010ffff]')
+	except re.error:
+		# UCS-2
+		highpoints = re.compile(u'[\uD800-\uDBFF][\uDC00-\uDFFF]')
+	s = highpoints.sub(u'\u25FD', s)
+	return str(s)	
+	
+def clear():
+	os.system('cls' if os.name == 'nt' else 'clear')
 
 def main():
 
@@ -225,11 +281,14 @@ def main():
 		parser.print_help()
 		exit(0)
 	
-	methodIndex =  {'exit':exit,
+	methodIndex =  {'clear':clear,
+					'date':dateSearch,
+					'exit':exit,
 					'help':printHelp,
 					'list':listSearch,
 					'live':liveSearch,
 					'media':getImages,
+					'mentions':mentions,
 					'new':changeUser,
 					'print':printTimeline,
 					'user':userInfo
@@ -238,9 +297,6 @@ def main():
 	global api, timeline	
 	api = setup()
 	timeline = getTimeline(api, options.username, options.count)
-
-	#if options.wordlist:
-	#	getWordList(options.wordlist)
 	
 	while True:
 		command = raw_input(">>> ")
