@@ -3,6 +3,7 @@ import HTML
 import tweepy
 from tweepy import OAuthHandler
 from optparse import OptionParser
+from datetime import datetime
 import codecs
 import zipfile
 import urllib2
@@ -61,8 +62,10 @@ def printTimeline():
 		for status in timeline:
 			printTweet(status)
 		return
-	except:
+	except Exception, e:
 		print "[-] Error printing timeline"
+		errorLog(e, "printTimeline")
+		return
 
 def printTweet(tweet):
 	"""
@@ -73,51 +76,53 @@ def printTweet(tweet):
 	"""
 	try:
 		print "----"
-		print "[+] Time:      "+str(tweet.created_at)
-		print "[+] Text:      "+tweet.text
-		print "[+] Location:  "+geoInfo(tweet, URL=False)
-		print "[+] Sent from: "+xstr(tweet.source)
-		print "[+] Link:       http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id)
+		print "%-14s %s" % ("[+] Time:", str(tweet.created_at))
+		print "%-14s %s" % ("[+] Text:", xstr(tweet.text))
+		print "%-14s %s" % ("[+] Location:", geoInfo(tweet))
+		print "%-14s %s" % ("[+] Platform:", xstr(tweet.source))
+		print "%-14s %s" % ("[+] Link:", "http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id))
 		return
-	except:
+	except Exception, e:
 		print "[-] Error printing tweet"
+		errorLog(e, "printTweet")
 		return
-	
+		
 def printHelp():
 	"""
 	Prints help menu
 	"""	
-	print "-" * 27
-	print "Command         Description"
-	print "-" * 27
-	print "archive" 	 + " " * 9 + "Downloads HTML archive of loaded timeline"
-	print "clear"	 + " " * 11 + "Clears the terminal"
-	print "date"	 + " " * 12 + "Find tweets in certain date ranges"
-	print "exit" 	 + " " * 12 + "Exits the program"
-	print "help" 	 + " " * 12 + "Prints this help list"
-	#print "html" 	 + " " * 12 + "Download timeline to an html file"		
-	print "live" 	 + " " * 12 + "Interactive live search for specific queries"
-	print "match" 	 + " " * 11 + "Compare timeline against a given wordlist"
-	print "mentions" 	 + " " * 8 + "Find most frequently contacted users"
-	print "new" 	 + " " * 13 + "Change target account"				
-	print "user" 	 + " " * 12 + "Prints basic user info"
-	#print "advanced" + " " * 8  + "Prints advanced user info"			
-	print "zip" 	 + " " * 13 + "Download and zip timeline"
+	print "-" * 24
+	print "%-12s %s" % ("Command", "Description")
+	print "-" * 24
+	print "%-12s %s" % ("archive", "Downloads HTML archive of loaded timeline")
+	print "%-12s %s" % ("clear","Clears the terminal")
+	print "%-12s %s" % ("date", "Find tweets in certain date ranges")
+	print "%-12s %s" % ("exit", "Exits the program")
+	print "%-12s %s" % ("help", "Prints this help list")
+	print "%-12s %s" % ("html", "Download timeline to an html file")	
+	print "%-12s %s" % ("live", "Interactive live search for specific queries")
+	print "%-12s %s" % ("match", "Compare timeline against a given wordlist")
+	print "%-12s %s" % ("mentions", "Find most frequently contacted users")
+	print "%-12s %s" % ("new", "Change target account")			
+	print "%-12s %s" % ("user", "Prints basic user info")
+	#print "%-12s %s" % ("advanced", "Prints advanced user info")		
+	print "%-12s %s" % ("zip", "Download and zip timeline")
 
 def userInfo():
 	"""
 	Prints info on target account
 	"""
 	try:
-		print "[+] Name: "+timeline[0].user.name
-		print "[+] Handle: "+str(timeline[0].user.screen_name)
-		print "[+] About: "+xstr(timeline[0].user.description)
-		print "[+] Location: "+xstr(timeline[0].user.location)
-		print "[+] Profile Link: http://twitter.com/"+timeline[0].user.screen_name
+		print "%-18s %s" % ("[+] Name:",timeline[0].user.name)
+		print "%-18s %s" % (("[+] Handle:", str(timeline[0].user.screen_name)))
+		print "%-18s %s" % ("[+] About: ", xstr(timeline[0].user.description))
+		print "%-18s %s" % ("[+] Location: ", xstr(timeline[0].user.location))
+		print "%-18s %s" % ("[+] Profile Link:", "http://twitter.com/"+timeline[0].user.screen_name)
 	
 	except Exception, e:
 		print "[-] Error getting account info"
-		print e
+		errorLog(e, "userInfo")
+		return
 
 def changeUser():
 	"""
@@ -132,58 +137,60 @@ def changeUser():
 	
 	except Exception, e:
 		print "[-] Unable to change user account, target is still"+options.username
-		print e
+		errorLog(e, "changeUser")
 		timeline = getTimeline(api, user, count, verbose=False)
-
-def dateSearch():
-	start_entry = raw_input('Enter start date (YYYY-MM-DD): ')
-	end_entry = raw_input('Enter end data (YYYY-MM-DD): ')
-
-	syear, smonth, sday = start_entry.split('-')
-	eyear, emonth, eday = end_entry.split('-')
-	start_date = syear + smonth + sday
-	end_date = eyear + emonth + eday
-
-	for status in timeline:
-		date = str(status.created_at)
-		current_date, time = date.split(' ');
-		year, month, day = current_date.split('-', 3)
-		check_date = year + month + day
-
-		if check_date > start_date and check_date < end_date:
-			printTweet(status)
+		return
 		
+def dateSearch():
+	try:
+		start_entry = raw_input('Enter start date (YYYY-MM-DD): ')
+		end_entry = raw_input('Enter end data (YYYY-MM-DD): ')
+
+		syear, smonth, sday = start_entry.split('-')
+		eyear, emonth, eday = end_entry.split('-')
+		start_date = syear + smonth + sday
+		end_date = eyear + emonth + eday
+
+		for status in timeline:
+			date = str(status.created_at)
+			current_date, time = date.split(' ');
+			year, month, day = current_date.split('-', 3)
+			check_date = year + month + day
+
+			if check_date > start_date and check_date < end_date:
+				printTweet(status)
+				return
+				
+	except Exception, e:
+		print "[-] Error performing chronological search"
+		errorLog(e, "dateSearch")
+		return
+	
 def listSearch():
 	"""
-	Will check the currently gathered timeline and match it against the specified wordlist
+	Will check the currently gathered timeline and match it against the given wordlist
 	"""
-	
-	path = ""
-	while True:
-		path = raw_input("Enter wordlist path: ")
-		
-		if os.path.isfile(path):
-			break
-		else:
-			print "[-] Error opening file"
-
 	try:
-		print "[+] Searching timeline for contents of %s..."%path
-		wfile = open(path, 'r')
+		wordlist = raw_input('Enter filename: ')
+		"""
+		if not os.path.isfile(wordlist):
+			print "[-] Error opening file"
+			clear()
+		"""
+		print "[+] Searching timeline for contents of %s..." %wordlist
+		
 		for status in timeline:
-			#wfile = open(wordlist, 'r')
+			wfile = open(wordlist, 'r')
+
 			for word in wfile:
 				word = word.strip()
-				print word
 				if word.lower() in status.text.lower():
-					print status.text.lower()
-					#print "MATCH"
-					#printTweet(status)
+					printTweet(status)
 		wfile.close()
-		return
+					
 	except Exception, e:
 		print "[-] Error searching timeline"
-		print e
+		errorLog(e, "listSearch")
 		return
 	
 def liveSearch():
@@ -201,9 +208,11 @@ def liveSearch():
 				if query.lower() in status.text.lower():
 					printTweet(status)
 		return
+		
 	except Exception, e:
 		print "[-] Error with search query"
-		print e
+		errorLog(e, "liveSearch")
+		return
 
 def getImages():
 	print "[+] Downloading images from @%s's timeline..."%str(timeline[0].user.screen_name)
@@ -228,9 +237,10 @@ def getImages():
 		print "[+] Downloaded %d image(s)"%i
 		zf.close()
 		return
+		
 	except Exception, e:
 		print "[-] Error downloading pictures"
-		print e
+		errorLog(e, "getImages")
 		return
 
 def archive():
@@ -248,20 +258,21 @@ def archive():
 				geo = HTML.link(geo, geoInfo(tweet, URL=True))
 			webUrl = HTML.link('View on web', "http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id))
 			
-			newRow = [str(tweet.created_at), tweet.text, geo, xstr(tweet.source),webUrl]
+			newRow = [str(tweet.created_at), tweet.text.encode('utf-8'), geo, xstr(tweet.source),webUrl]
 			table.rows.append(newRow)
 		
-		name = str(timeline[0].user.screen_name)+"_archive.html"
+		name = str(timeline[0].user.screen_name)+"_archive_"+datetime.now().strftime('%Y-%m-%d_%H%M')+".html"
 		localFile = open(name, 'w')
 		localFile.writelines(str(table))
 		localFile.close()
+		
 		print "[+] HTML archive successfully created"
 		return
 		
 	except Exception, e:
 		print "[-] Error creating HTML archive from timeline"
-		print e
-								
+		errorLog(e, "archive")
+		return							
 		
 def mentions():
 	"""
@@ -287,8 +298,35 @@ def mentions():
 		except:
 			print "[+] End of mentions"
 		return
-	except:
+	
+	except Exception, e:
 		print "[-] Error getting mentions"
+		errorLog(e, "mentions")
+		return
+		
+def geoInfo(tweet, URL=False):
+	"""
+	Returns short description geo info from tweet
+	
+	Arguments:
+		tweet		Tweet object
+		URL			bool, whether or not user wants GMaps URL returned
+	"""
+	try:
+		if tweet.place:
+			if URL:
+				append = tweet.place.full_name.replace (" ", "+")
+				url = "http://www.google.com/maps/place/"+append
+				return url
+			else:
+				return tweet.place.full_name
+		else:
+			return "N/A"
+	
+	except Exception, e:
+		print "[-] Error getting geolocation info"
+		errorLog(e, "printTimeline")
+		return
 	
 def xstr(s):
 	"""
@@ -296,29 +334,61 @@ def xstr(s):
 	"""
 	if s is None:
 		return 'N/A'
+	"""	
+	emoji_pattern = r'/[U0001F601-U0001F64F]/u'
+	re.sub(emoji_pattern, '#', s)
+	"""
 	try:
 		# UCS-4
-		highpoints = re.compile(u'[\U00010000-\U0010ffff]')
+		highpoints = re.compile(u'[U00010000-U0010ffff]')
 	except re.error:
 		# UCS-2
-		highpoints = re.compile(u'[\uD800-\uDBFF][\uDC00-\uDFFF]')
-	s = highpoints.sub(u'\u25FD', s)
-	return str(s)	
+		highpoints = re.compile(u'[uD800-uDBFF][uDC00-uDFFF]')
+	"""
+	try:
+		# Wide UCS-4 build
+		myre = re.compile(u'['
+			u'\U0001F300-\U0001F64F'
+			u'\U0001F680-\U0001F6FF'
+			u'\u2600-\u26FF\u2700-\u27BF]+', 
+			re.UNICODE)
+	except re.error:
+		# Narrow UCS-2 build
+		myre = re.compile(u'('
+			u'\ud83c[\udf00-\udfff]|'
+			u'\ud83d[\udc00-\ude4f\ude80-\udeff]|'
+			u'[\u2600-\u26FF\u2700-\u27BF])+', 
+			re.UNICODE)
+	#re.sub(highpoints, '', s)
+	"""
+	return s.encode('utf-8')	
 	
 def clear():
 	os.system('cls' if os.name == 'nt' else 'clear')
 	
-def geoInfo(tweet, URL=False):
-	if tweet.place:
-		if URL:
-			append = tweet.place.full_name.replace (" ", "+")
-			url = "http://www.google.com/maps/place/"+append
-			return url
-		else:
-			return tweet.place.full_name
-	else:
-		return "N/A"
-
+def errorLog(error, module):
+	"""
+	Writes errors to HTML log file
+	
+	Arguments:
+		error		Error recieved from module
+		module		Function where error was encountered
+	"""
+	try:
+		log = HTML.Table(header_row=['Function', 'Time', 'Info'])
+		
+		entry = [module, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), str(error)]
+		log.rows.append(entry)
+		
+		logFile = open("talon_error_log.html", 'a')
+		logFile.writelines("<br>")
+		logFile.writelines(str(log))
+		logFile.close()
+		
+	except Exception, e:
+		print "ERROR\n"+str(e)
+		return
+		
 def main():
 
 	parser = OptionParser(usage="usage: %prog -u <username>", version="%prog 1.0")
@@ -341,7 +411,7 @@ def main():
 					'mentions':mentions,
 					'new':changeUser,
 					'print':printTimeline,
-					'user':userInfo,
+					'user':userInfo
 					}
 	
 	global api, timeline	
