@@ -1,5 +1,5 @@
 import sys, os, re
-#import HTML
+import HTML
 import tweepy
 from tweepy import OAuthHandler
 from optparse import OptionParser
@@ -30,7 +30,7 @@ def setup():
 		print e
 		exit(0)
 
-def getTimeline(api, username, count=20):
+def getTimeline(api, username, count=20, verbose=True):
 	"""
 	Retrieves timeline of specified user
 	
@@ -41,16 +41,17 @@ def getTimeline(api, username, count=20):
 	Returns:
 		timeline	list of STATUS objects
 	"""
-	print "[+] Retrieving timeline of @%s..."%username
+	if verbose == True:
+		print "[+] Retrieving timeline of @%s..."%username
 	try:
 		timeline = api.user_timeline(screen_name=username, count=count)
-		print "[+] %s tweet(s) found"%len(timeline)
+		if verbose == True:
+			print "[+] %s tweet(s) found"%len(timeline)
 		return timeline
 		
 	except Exception, e:
-		print "[-] Error retrieving timeline:"
+		print "[-] Error retrieving timeline of "+username
 		print e
-		exit(0)
 		
 def printTimeline():
 	"""
@@ -74,9 +75,9 @@ def printTweet(tweet):
 		print "----"
 		print "[+] Time:      "+str(tweet.created_at)
 		print "[+] Text:      "+tweet.text
-		#print "[+] Location:  "+xstr(tweet.place.name)
+		print "[+] Location:  "+geoInfo(tweet, URL=False)
 		print "[+] Sent from: "+xstr(tweet.source)
-		print "[+] URL:       http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id)
+		print "[+] Link:       http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id)
 		return
 	except:
 		print "[-] Error printing tweet"
@@ -89,14 +90,16 @@ def printHelp():
 	print "-" * 27
 	print "Command         Description"
 	print "-" * 27
+	print "archive" 	 + " " * 9 + "Downloads HTML archive of loaded timeline"
+	print "clear"	 + " " * 11 + "Clears the terminal"
+	print "date"	 + " " * 12 + "Find tweets in certain date ranges"
 	print "exit" 	 + " " * 12 + "Exits the program"
 	print "help" 	 + " " * 12 + "Prints this help list"
-	print "clear"	 + " " * 11 + "Clears the terminal"
 	#print "html" 	 + " " * 12 + "Download timeline to an html file"		
 	print "live" 	 + " " * 12 + "Interactive live search for specific queries"
-	print "match" 	 + " " * 11 + "Compare timeline against a given wordlist"	
+	print "match" 	 + " " * 11 + "Compare timeline against a given wordlist"
+	print "mentions" 	 + " " * 8 + "Find most frequently contacted users"
 	print "new" 	 + " " * 13 + "Change target account"				
-	#print "search" 	 + " " * 10 + "Search user's tweets interactively"	
 	print "user" 	 + " " * 12 + "Prints basic user info"
 	#print "advanced" + " " * 8  + "Prints advanced user info"			
 	print "zip" 	 + " " * 13 + "Download and zip timeline"
@@ -111,6 +114,7 @@ def userInfo():
 		print "[+] About: "+xstr(timeline[0].user.description)
 		print "[+] Location: "+xstr(timeline[0].user.location)
 		print "[+] Profile Link: http://twitter.com/"+timeline[0].user.screen_name
+	
 	except Exception, e:
 		print "[-] Error getting account info"
 		print e
@@ -125,9 +129,11 @@ def changeUser():
 		user = raw_input("Enter new username: @")
 		count = raw_input("Enter count: ")
 		timeline = getTimeline(api, user, count)
+	
 	except Exception, e:
-		print "[-] Unable to change user account"
+		print "[-] Unable to change user account, target is still"+options.username
 		print e
+		timeline = getTimeline(api, user, count, verbose=False)
 
 def dateSearch():
 	start_entry = raw_input('Enter start date (YYYY-MM-DD): ')
@@ -226,6 +232,36 @@ def getImages():
 		print "[-] Error downloading pictures"
 		print e
 		return
+
+def archive():
+	"""
+	Downloads HTML archive of currently loaded timeline
+	"""
+	print "[+] Creating HTML archive of timeline..."
+	
+	try:
+		table = HTML.Table(header_row=['Time', 'Text', 'Location', 'Platform', 'Web Link'])
+		
+		for tweet in timeline:
+			geo =geoInfo(tweet)
+			if geo != "N/A":
+				geo = HTML.link(geo, geoInfo(tweet, URL=True))
+			webUrl = HTML.link('View on web', "http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id))
+			
+			newRow = [str(tweet.created_at), tweet.text, geo, xstr(tweet.source),webUrl]
+			table.rows.append(newRow)
+		
+		name = str(timeline[0].user.screen_name)+"_archive.html"
+		localFile = open(name, 'w')
+		localFile.writelines(str(table))
+		localFile.close()
+		print "[+] HTML archive successfully created"
+		return
+		
+	except Exception, e:
+		print "[-] Error creating HTML archive from timeline"
+		print e
+								
 		
 def mentions():
 	"""
@@ -245,12 +281,14 @@ def mentions():
 		
 		print "\nUser                   Qty"
 		print "=========================="
-		for i in range(0,10):
-			print str(mentions[i][0])+"\t\t"+str(mentions[i][1])
+		try:
+			for i in range(0,10):
+				print '%-20s %05s' % (str(mentions[i][0]), str(mentions[i][1]))
+		except:
+			print "[+] End of mentions"
 		return
-	except Exception, e:
+	except:
 		print "[-] Error getting mentions"
-		print e
 	
 def xstr(s):
 	"""
@@ -269,6 +307,17 @@ def xstr(s):
 	
 def clear():
 	os.system('cls' if os.name == 'nt' else 'clear')
+	
+def geoInfo(tweet, URL=False):
+	if tweet.place:
+		if URL:
+			append = tweet.place.full_name.replace (" ", "+")
+			url = "http://www.google.com/maps/place/"+append
+			return url
+		else:
+			return tweet.place.full_name
+	else:
+		return "N/A"
 
 def main():
 
@@ -281,7 +330,8 @@ def main():
 		parser.print_help()
 		exit(0)
 	
-	methodIndex =  {'clear':clear,
+	methodIndex =  {'archive':archive,
+					'clear':clear,
 					'date':dateSearch,
 					'exit':exit,
 					'help':printHelp,
@@ -291,7 +341,7 @@ def main():
 					'mentions':mentions,
 					'new':changeUser,
 					'print':printTimeline,
-					'user':userInfo
+					'user':userInfo,
 					}
 	
 	global api, timeline	
@@ -308,3 +358,5 @@ def main():
 	
 if __name__ == "__main__":
 	main()
+
+	
