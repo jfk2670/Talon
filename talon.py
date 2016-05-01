@@ -151,6 +151,9 @@ def changeUser():
 		return
 
 def dateSearch():
+	"""
+	Will print tweets that match a specific date range
+	"""
 	logger = logging.getLogger("TALON")
 	try:
 		start_entry = raw_input('Enter start date (YYYY-MM-DD): ')
@@ -179,6 +182,9 @@ def dateSearch():
 		return
 
 def validateDate(date_text):
+	"""
+	Validates that date strings are in YYYY-MM-DD format
+	"""
 	logger = logging.getLogger("TALON")
 	try:
 		datetime.strptime(date_text, '%Y-%m-%d')
@@ -235,6 +241,9 @@ def liveSearch():
 		return
 
 def getImages():
+	"""
+	Downloads images from users timeline to ZIP archive
+	"""
 	logger = logging.getLogger("TALON")
 	logger.info("Downloading images from @%s's timeline...", str(timeline[0].user.screen_name))
 	try:
@@ -282,7 +291,7 @@ def archive():
 							str(timeline[0].user.screen_name),
 							xstr(timeline[0].user.description),
 							xstr(timeline[0].user.location),
-							"http://twitter.com/"+timeline[0].user.screen_name) ) 
+							"http://twitter.com/"+timeline[0].user.screen_name) )
 		writer.writerow([])
 
 		writer.writerow( ('Time', 'Text', 'Location', 'Platform', 'Web Link') )
@@ -362,36 +371,20 @@ def xstr(s):
 	"""
 	if s is None:
 		return 'N/A'
-	"""
-	emoji_pattern = r'/[U0001F601-U0001F64F]/u'
-	re.sub(emoji_pattern, '#', s)
-	"""
+
 	try:
 		# UCS-4
 		highpoints = re.compile(u'[U00010000-U0010ffff]')
 	except re.error:
 		# UCS-2
 		highpoints = re.compile(u'[uD800-uDBFF][uDC00-uDFFF]')
-	"""
-	try:
-		# Wide UCS-4 build
-		myre = re.compile(u'['
-			u'\U0001F300-\U0001F64F'
-			u'\U0001F680-\U0001F6FF'
-			u'\u2600-\u26FF\u2700-\u27BF]+',
-			re.UNICODE)
-	except re.error:
-		# Narrow UCS-2 build
-		myre = re.compile(u'('
-			u'\ud83c[\udf00-\udfff]|'
-			u'\ud83d[\udc00-\ude4f\ude80-\udeff]|'
-			u'[\u2600-\u26FF\u2700-\u27BF])+',
-			re.UNICODE)
-	#re.sub(highpoints, '', s)
-	"""
+
 	return s.encode('utf-8')
 
 def clear():
+	"""
+	Clears terminal
+	"""
 	os.system('cls' if os.name == 'nt' else 'clear')
 
 def main():
