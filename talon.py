@@ -1,6 +1,7 @@
-import sys, os, re
-import html
-from html import HTML
+import os
+import sys
+import re
+import csv
 import logging
 import datetime
 import tweepy
@@ -105,11 +106,14 @@ def printTweet(tweet):
 		logger.error(e)
 		return
 
-def printHelp():
+def printHelp(menu):
 	"""
 	Prints help menu
 	"""
-
+	print "-" * 24
+	for function in menu.keys():
+		print "%-10s %s" % (function, menu[function][1])
+	print "-" * 24
 
 def userInfo():
 	"""
@@ -262,32 +266,38 @@ def getImages():
 
 def archive():
 	"""
-	Downloads HTML archive of currently loaded timeline
+	Downloads CSV archive of currently loaded timeline
+
+	Prints user info table, followed by blank line, then tweets
 	"""
 	logger = logging.getLogger("TALON")
-	logger.info("Creating HTML archive of timeline...")
+	logger.info("Creating CSV archive of timeline...")
 	try:
-		table = HTML.table(header_row=['Time', 'Text', 'Location', 'Platform', 'Web Link'])
+		name = str(timeline[0].user.screen_name)+"_archive_"+datetime.now().strftime('%Y-%m-%d_%H%M')+".csv"
+		oFile = open(name, 'w')
+		writer = csv.writer(oFile, quoting=csv.QUOTE_NONNUMERIC)
 
+		writer.writerow( ('Name', 'Handle', 'About', 'Location', 'Profile') )
+		writer.writerow( ( (timeline[0].user.name),
+							str(timeline[0].user.screen_name),
+							xstr(timeline[0].user.description),
+							xstr(timeline[0].user.location),
+							"http://twitter.com/"+timeline[0].user.screen_name) ) 
+		writer.writerow([])
+
+		writer.writerow( ('Time', 'Text', 'Location', 'Platform', 'Web Link') )
 		for tweet in timeline:
-			geo =geoInfo(tweet)
-			if geo != "N/A":
-				geo = HTML.link(geo, geoInfo(tweet, URL=True))
-			webUrl = HTML.link('View on web', "http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id))
-
+			geo = geoInfo(tweet)
+			webUrl = "http://twitter.com/"+tweet.user.screen_name+"/status/"+str(tweet.id)
 			newRow = [str(tweet.created_at), tweet.text.encode('utf-8'), geo, xstr(tweet.source),webUrl]
-			table.rows.append(newRow)
+			writer.writerow(newRow)
 
-		name = str(timeline[0].user.screen_name)+"_archive_"+datetime.now().strftime('%Y-%m-%d_%H%M')+".html"
-		localFile = open(name, 'w')
-		localFile.writelines(str(table))
-		localFile.close()
-
-		print "[+] HTML archive successfully created"
+		oFile.close()
+		logger.info("Wrote archive to %s", name)
 		return
 
 	except Exception, e:
-		print "[-] Error creating HTML archive from timeline"
+		print "[-] Error creating CSV archive from timeline"
 		logger.error(e)
 		return
 
@@ -386,8 +396,8 @@ def clear():
 
 def main():
 
-	menu =  {'archive':[archive,"Downloads HTML archive of loaded timeline"],
-				'clear':[clear,"Clears the terminal"],
+	menu =  {'clear':[clear,"Clears the terminal"],
+				'csv':[archive,"Downloads CSV archive of loaded timeline"],
 				'date':[dateSearch,"Find tweets in certain date ranges"],
 				'exit':[exit,"Exits the program"],
 				'help':[printHelp,"Prints this help list"],
@@ -419,10 +429,7 @@ def main():
 	while True:
 		command = raw_input(">>> ")
 		if command == 'help':
-			print "-" * 24
-			for function in menu.keys():
-				print "%-10s %s" % (function, menu[function][1])
-			print "-" * 24
+			printHelp()
 		elif command in menu.keys():
 			menu[command][0]()
 		else:
